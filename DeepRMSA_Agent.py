@@ -462,18 +462,93 @@ class DeepRMSA_Agent():
                         num_FS = self.cal_FS(current_bandwidth, path_len)
                         slot_temp = [1] * self.SLOT_TOTAL
                         path_links = self.calclink(path)
-                        slot_temp = self.get_new_slot_temp(slot_temp, path_links, self.slot_map)  # spectrum utilization on the whole path
-                        (flag, fs_start, fs_end) = self.judge_availability(slot_temp, num_FS, FS_id)
-                        if flag == 1:
-                            self.slot_map, self.slot_map_t = self.update_slot_map_for_committing_wp(self.slot_map, path_links, fs_start, fs_end, self.slot_map_t, current_TTL)  # update slotmap
-                            temp_ = []  # update in-service requests
-                            temp_.append(list(path_links))
-                            temp_.append(fs_start)
-                            temp_.append(fs_end)
-                            temp_.append(current_TTL)
-                            self.request_set[req_id] = temp_
+                        
+                        # core allocation
+                        core_num = np.random.choice(6)
+                        
+                        if core_num == 6:
+
+                            slot_temp = self.get_new_slot_temp(slot_temp, path_links, self.slot_map)  # spectrum utilization on the whole path
+                            (flag, fs_start, fs_end) = self.judge_availability(slot_temp, num_FS, FS_id)
+                            if flag == 1:
+                                # if XT < XTthreshold
+                                self.slot_map, self.slot_map_t = self.update_slot_map_for_committing_wp(self.slot_map, path_links, fs_start, fs_end, self.slot_map_t, current_TTL)  # update slotmap
+                                temp_ = []  # update in-service requests
+                                temp_.append(list(path_links))
+                                temp_.append(fs_start)
+                                temp_.append(fs_end)
+                                temp_.append(current_TTL)
+                                self.request_set[req_id] = temp_
+                            else:
+                                for i in range(6):
+                                    slot_temp = self.get_new_slot_temp(slot_temp, path_links, self.slot_map)  # spectrum utilization on the whole path
+                                    (flag, fs_start, fs_end) = self.judge_availability(slot_temp, num_FS, FS_id)
+                                    if flag == 1:
+                                        self.slot_map, self.slot_map_t = self.update_slot_map_for_committing_wp(self.slot_map, path_links, fs_start, fs_end, self.slot_map_t, current_TTL)  # update slotmap
+                                        temp_ = []  # update in-service requests
+                                        temp_.append(list(path_links))
+                                        temp_.append(fs_start)
+                                        temp_.append(fs_end)
+                                        temp_.append(current_TTL)
+                                        self.request_set[req_id] = temp_
+                                        break
+                        
                         else:
-                            blocking = 1
+                            slot_temp = self.get_new_slot_temp(slot_temp, path_links, self.slot_map)  # spectrum utilization on the whole path
+                            (flag, fs_start, fs_end) = self.judge_availability(slot_temp, num_FS, FS_id)
+                            if flag == 1:
+                                self.slot_map, self.slot_map_t = self.update_slot_map_for_committing_wp(self.slot_map, path_links, fs_start, fs_end, self.slot_map_t, current_TTL)  # update slotmap
+                                temp_ = []  # update in-service requests
+                                temp_.append(list(path_links))
+                                temp_.append(fs_start)
+                                temp_.append(fs_end)
+                                temp_.append(current_TTL)
+                                self.request_set[req_id] = temp_
+                            else:
+                                if core_num != 0 and core_num != 5:
+                                    adj_cores = [core_num-1, core_num+1, 6]
+                                    nonadj_cores = [i for i in range(6) if i not in adj_cores and i != core_num]
+                                elif core_num == 0:
+                                    adj_cores = [1, 5, 6]
+                                    nonadj_cores = [2, 3, 4]
+                                elif core_num == 5:
+                                    adj_cores = [0, 4, 6]
+                                    nonadj_cores = [1, 2, 3]
+                                for core in adj_cores:
+                                    slot_temp = self.get_new_slot_temp(slot_temp, path_links, self.slot_map)  # spectrum utilization on the whole path
+                                    (flag, fs_start, fs_end) = self.judge_availability(slot_temp, num_FS, FS_id)
+                                    if flag == 0:
+                                        k = 0
+                                        continue
+                                    else:
+                                        k = 1
+                                        self.slot_map, self.slot_map_t = self.update_slot_map_for_committing_wp(self.slot_map, path_links, fs_start, fs_end, self.slot_map_t, current_TTL)  # update slotmap
+                                        temp_ = []  # update in-service requests
+                                        temp_.append(list(path_links))
+                                        temp_.append(fs_start)
+                                        temp_.append(fs_end)
+                                        temp_.append(current_TTL)
+                                        self.request_set[req_id] = temp_
+                                        break
+                                if k == 0:
+                                    for core in nonadj_cores:
+                                        slot_temp = self.get_new_slot_temp(slot_temp, path_links, self.slot_map)  # spectrum utilization on the whole path
+                                        (flag, fs_start, fs_end) = self.judge_availability(slot_temp, num_FS, FS_id)
+                                        if flag == 0:
+                                            continue
+                                        else:
+                                            # if XT < XTthreshold
+                                            self.slot_map, self.slot_map_t = self.update_slot_map_for_committing_wp(self.slot_map, path_links, fs_start, fs_end, self.slot_map_t, current_TTL)  # update slotmap
+                                            temp_ = []  # update in-service requests
+                                            temp_.append(list(path_links))
+                                            temp_.append(fs_start)
+                                            temp_.append(fs_end)
+                                            temp_.append(current_TTL)
+                                            self.request_set[req_id] = temp_
+                                            break
+
+                    if flag != 1:
+                        blocking = 1
                     
                     r_t = 1 - 2*blocking # successful, 1, blocked, -1
                     #r_t = 1 - blocking
